@@ -1,0 +1,38 @@
+# Python
+__pycache__/
+*.py[cod]
+
+# Virtual Environments
+cdac_venv/
+.venv/
+venv/
+
+# IDE
+.vscode/
+.idea/
+
+# Generated Project Files
+uploads/*
+extracted_frames/*
+enhanced_frames/*
+outputs/*
+
+# Keep folders in Git
+!uploads/.gitkeep
+!extracted_frames/.gitkeep
+!enhanced_frames/.gitkeep
+!outputs/.gitkeep
+
+# Future model folders
+models/
+checkpoints/
+
+# Environment variables
+.env
+
+# Logs
+*.log
+
+# Operating System Files
+.DS_Store
+Thumbs.db
