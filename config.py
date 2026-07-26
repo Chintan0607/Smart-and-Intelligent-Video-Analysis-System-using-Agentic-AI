@@ -6,9 +6,7 @@ load_dotenv()
 HF_API_TOKEN = os.getenv("HF_API_TOKEN", "")
 
 VLM_CANDIDATES = [
-    (os.getenv("HF_VLM_MODEL_ID_1", "Qwen/Qwen2.5-VL-7B-Instruct"), "hf-inference"),
-    (os.getenv("HF_VLM_MODEL_ID_2", "meta-llama/Llama-3.2-11B-Vision-Instruct"), "hf-inference"),
-    (os.getenv("HF_VLM_MODEL_ID_3", "Qwen/Qwen2.5-VL-7B-Instruct"), "auto"),
+    ("CohereLabs/command-a-vision-07-2025", "cohere"),
 ]
 
 HF_VLM_MODEL_ID_OVERRIDE = os.getenv("HF_VLM_MODEL_ID_OVERRIDE", "")

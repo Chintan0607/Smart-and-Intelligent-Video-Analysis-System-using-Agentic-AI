@@ -2,6 +2,8 @@ import base64
 import io
 import os
 import tempfile
+from openai import OpenAI
+
 
 import cv2
 from PIL import Image
@@ -17,7 +19,7 @@ from config import (
     SYSTEM_PROMPT,
 )
 
-MAX_VIDEO_FRAMES = 6
+MAX_VIDEO_FRAMES = 4
 
 
 class VLMServiceError(Exception):
@@ -130,10 +132,11 @@ def _candidate_list():
     return candidates
 
 
+from openai import OpenAI
+
 def _try_candidate(model_id: str, provider: str, data_urls: list[str], media_label: str):
-    """Attempt a single (model, provider) call. Returns content string or raises."""
-    client = InferenceClient(
-        provider=provider,
+    client = OpenAI(
+        base_url="https://router.huggingface.co/v1",
         api_key=HF_API_TOKEN,
         timeout=REQUEST_TIMEOUT,
     )
@@ -149,7 +152,7 @@ def _try_candidate(model_id: str, provider: str, data_urls: list[str], media_lab
     )
 
     completion = client.chat.completions.create(
-        model=model_id,
+        model=f"{model_id}:{provider}",
         messages=[
             {"role": "system", "content": SYSTEM_PROMPT},
             {"role": "user", "content": user_content},
@@ -158,7 +161,6 @@ def _try_candidate(model_id: str, provider: str, data_urls: list[str], media_lab
         temperature=0.0,
     )
     return completion.choices[0].message.content
-
 
 def analyze_image_flaws(image_file) -> str:
     """

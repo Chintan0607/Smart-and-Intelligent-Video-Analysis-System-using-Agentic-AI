@@ -28,7 +28,7 @@ def _add_compression_blocks(frame, frame_index):
 
 def create_degraded_test_video(
     filename="degraded_cctv_test.webm",
-    duration_seconds=12,
+    duration_seconds=30,
     fps=15,
     width=640,
     height=360,
