@@ -2,3 +2,11 @@ streamlit
 opencv-python
 pillow
 numpy
+
+torch
+torchvision
+transformers
+accelerate
+
+huggingface-hub
+sentencepiece
