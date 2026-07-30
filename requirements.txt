@@ -1,0 +1,14 @@
+streamlit
+opencv-python
+pillow
+numpy
+langgraph>=0.0.1
+langchain>=0.1.0
+
+torch
+torchvision
+transformers>=5.14.0
+accelerate
+
+huggingface-hub
+sentencepiece

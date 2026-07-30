@@ -1,0 +1,71 @@
+# Python
+__pycache__/
+*.py[cod]
+
+# Virtual Environments
+cdac_venv/
+.venv/
+venv/
+
+# IDE
+.vscode/
+.idea/
+
+# Generated Project Files
+uploads/*
+extracted_frames/*
+enhanced_frames/*
+outputs/*
+
+# Keep folders in Git
+!uploads/.gitkeep
+!extracted_frames/.gitkeep
+!enhanced_frames/.gitkeep
+!outputs/.gitkeep
+
+# Large generated media and model artifacts
+*.mp4
+*.avi
+*.mov
+*.mkv
+*.webm
+*.jpg
+*.jpeg
+*.png
+*.gif
+*.bmp
+*.tiff
+*.tif
+*.zip
+*.tar
+*.gz
+*.7z
+*.onnx
+*.pt
+*.pth
+*.bin
+*.h5
+*.keras
+*.pb
+*.safetensors
+reports/
+output/
+models/
+checkpoints/
+wandb/
+mlruns/
+runs/
+artifacts/
+tmp/
+temp/
+cache/
+
+# Environment variables
+.env
+
+# Logs
+*.log
+
+# Operating System Files
+.DS_Store
+Thumbs.db
