@@ -9,6 +9,8 @@ from video_processor import (
     get_video_metadata,
     save_uploaded_video,
 )
+from services.summary_service import summarized_response
+from config import QWEN_BATCH_SIZE
 
 create_folders()
 
@@ -69,22 +71,22 @@ if uploaded_video is not None:
 
         # 2. Start execution timer
         start_time = time.time()
+        batch_size = QWEN_BATCH_SIZE
 
-        for idx, frame in enumerate(frames):
-            f_num = frame["frame_number"]
-            status_text.text(
-                f"Analyzing Frame {f_num} ({idx + 1}/{total_frames})..."
+        for start in range(0,len(frames),batch_size):
+            batch = frames[start:start+batch_size]
+            analyses = vlm.analyze_batch(
+                [f["pil_image"] for f in batch]
             )
-
-            analysis = vlm.analyze_frame(frame["pil_image"])
-            analysis["frame_number"] = f_num
-
+        for frame,analysis in zip(batch,analyses):
+            analysis["frame_number"] =  frame["frame_number"]
             raw_responses.append(analysis)
-
-            if "summary" in analysis and analysis["summary"]:
-                frame_summaries.append(f"Frame {f_num}: {analysis['summary']}")
-
-            progress_bar.progress((idx + 1) / total_frames)
+            if analysis["summary"]:
+                frame_summaries.append(
+                    f"Frame {frame['frame_number']}: {analysis['summary']}"
+                )
+            progress = min((start + len(batch)) / total_frames, 1.0)
+            progress_bar.progress(progress)
 
         # 3. Calculate total elapsed processing time
         elapsed_time = time.time() - start_time
@@ -116,7 +118,7 @@ if uploaded_video is not None:
                 f"{payload['processing_time_seconds']} s",
             )
         with m_col2:
-            st.info(payload["aggregated_summary"])
+            summarized_response = summarized_response(aggregated_summary_text)
 
         with st.expander("View Full Raw Payload (Agent Data)"):
             st.json(payload)
