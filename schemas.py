@@ -59,6 +59,9 @@ class FrameReportEntry(BaseModel):
     frame: ExtractedFrame
     vlm: VLMResult
     enhancement: Optional[EnhancementResult] = None
+    retries: int = 0
+    history: list[dict] = Field(default_factory=list)
+    vlm_before: Optional[VLMResult] = None
 
 
 class VideoReport(BaseModel):
@@ -67,7 +70,7 @@ class VideoReport(BaseModel):
     total_keyframes_extracted: int
     processing_time_seconds: float
     entries: list[FrameReportEntry]
-
+    report_pdf_path: Optional[str] = None
 
 class JobStatus(str, Enum):
     PENDING = "pending"

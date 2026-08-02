@@ -16,11 +16,14 @@ uploads/*
 extracted_frames/*
 enhanced_frames/*
 outputs/*
+reports/*
 
 # Keep folders in Git
 !uploads/.gitkeep
 !extracted_frames/.gitkeep
 !enhanced_frames/.gitkeep
+!outputs/.gitkeep
+!reports/.gitkeep
 !outputs/.gitkeep
 
 # Future model folders

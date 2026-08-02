@@ -10,6 +10,7 @@ from typing import Dict, List
 import httpx
 from fastapi import FastAPI, File, HTTPException, UploadFile
 from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
 
 from config import (
     ENHANCED_FRAME_FOLDER,
@@ -173,3 +174,23 @@ async def get_report(job_id: str):
     if job is None or job.report is None:
         raise HTTPException(status_code=404, detail="Report not ready")
     return job.report
+
+from agentic.supervisor import run_agentic_pipeline
+
+@app.post("/agentic/upload", response_model=JobProgress)
+async def upload_video_agentic(file: UploadFile = File(...)):
+    job_id = str(uuid.uuid4())
+    video_path = os.path.join(UPLOAD_FOLDER, f"{job_id}_{file.filename}")
+    with open(video_path, "wb") as f:
+        f.write(await file.read())
+    _jobs[job_id] = JobProgress(job_id=job_id, status=JobStatus.PENDING)
+    asyncio.create_task(run_agentic_pipeline(job_id, video_path))
+    return _jobs[job_id]
+
+@app.get("/report/{job_id}/pdf")
+async def download_report_pdf(job_id: str):
+    job = _jobs.get(job_id)
+    if job is None or job.report is None or not job.report.report_pdf_path:
+        raise HTTPException(status_code=404, detail="Report PDF not ready")
+    return FileResponse(job.report.report_pdf_path, media_type="application/pdf",
+                         filename=os.path.basename(job.report.report_pdf_path))
