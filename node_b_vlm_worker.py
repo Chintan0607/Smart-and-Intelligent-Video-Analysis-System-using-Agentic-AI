@@ -7,6 +7,7 @@ from PIL import Image
 
 from services.qwen_vlm_service import QwenService
 from schemas import DefectDetail, VLMResult
+from schemas import DefectDetail, VLMResult, AnomalyDetail, AnomalyResult
 
 app = FastAPI(title="Node B - VLM Worker")
 
@@ -43,3 +44,23 @@ async def analyze(image: UploadFile = File(...), frame_number: int = Form(...)):
 @app.get("/health")
 async def health():
     return {"status": "ok", "model_loaded": _vlm_service is not None}
+
+# --- Append to node_b_vlm_worker.py (add "from schemas import AnomalyDetail, AnomalyResult" to imports) ---
+
+@app.post("/detect_anomaly", response_model=AnomalyResult)
+async def detect_anomaly(image: UploadFile = File(...), frame_number: int = Form(...)):
+    image_bytes = await image.read()
+    pil_image = Image.open(io.BytesIO(image_bytes)).convert("RGB")
+    analysis = _vlm_service.analyze_anomaly_frame(pil_image)
+
+    anomalies = {
+        category: AnomalyDetail(**detail)
+        for category, detail in analysis.get("anomalies", {}).items()
+    }
+    return AnomalyResult(
+        frame_number=frame_number,
+        anomalies=anomalies,
+        overall_risk=analysis.get("overall_risk", "Unknown"),
+        summary=analysis.get("summary", ""),
+        review_recommended=analysis.get("review_recommended", False),
+    )

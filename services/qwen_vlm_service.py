@@ -189,3 +189,52 @@ class QwenService:
         )
 
         return result
+    
+    # --- Add these two imports at the top of qwen_vlm_service.py ---
+# from prompts import PROMPT, ANOMALY_PROMPT   (replaces the existing "from prompts import PROMPT" line)
+
+# --- Add these two methods INSIDE the existing QwenService class,
+#     anywhere after analyze_batch(). Reuses your existing _query_vlm()
+#     and _extract_field() — nothing about model loading changes. ---
+
+    def analyze_anomaly_frame(self, frame):
+        return self.analyze_anomaly_batch([frame])[0]
+
+    def analyze_anomaly_batch(self, frames):
+        responses = self._query_vlm(frames, ANOMALY_PROMPT)
+        return [self._parse_anomaly_response(r) for r in responses]
+
+    def _parse_anomaly_response(self, response):
+        categories = [
+            "Violence", "Weapon", "Fire", "Accident", "Fall", "Intrusion", "Theft",
+        ]
+
+        result = {"anomalies": {}}
+
+        for category in categories:
+            pattern = (
+                rf"{category}:(.*?)(?=\n(?:"
+                rf"Violence|Weapon|Fire|Accident|Fall|Intrusion|Theft|"
+                rf"Overall Risk|Summary):|\Z)"
+            )
+            match = re.search(pattern, response, flags=re.DOTALL | re.IGNORECASE)
+            if not match:
+                continue
+
+            section = match.group(1)
+            present_val = self._extract_field(section, "Present")
+
+            result["anomalies"][category] = {
+                "present": present_val.lower() == "yes",
+                "confidence": self._extract_field(section, "Confidence"),
+                "severity": self._extract_field(section, "Severity"),
+                "evidence": self._extract_field(section, "Evidence"),
+            }
+
+        result["overall_risk"] = self._extract_field(response, "Overall Risk")
+        result["summary"] = self._extract_field(response, "Summary")
+        result["review_recommended"] = any(
+            a["present"] for a in result["anomalies"].values()
+        )
+
+        return result

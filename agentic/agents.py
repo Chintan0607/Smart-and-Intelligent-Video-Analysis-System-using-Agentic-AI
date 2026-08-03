@@ -11,17 +11,18 @@ import logging
 from typing import Dict
 
 import httpx
-from langchain_anthropic import ChatAnthropic
+from langchain_google_genai import ChatGoogleGenerativeAI
 
 from .state import FrameState
 from .quality import quality_score, improved, describe
 from .local_enhancers import LOCAL_TOOLS
 from schemas import EnhancementResult
+from .anomaly_client import call_node_b_anomaly
 
 logger = logging.getLogger("agentic.agents")
 
-REACT_MODEL = "claude-sonnet-4-6"
-_llm = ChatAnthropic(model=REACT_MODEL, temperature=0)
+REACT_MODEL = "gemini-2.0-flash"  # reads GOOGLE_API_KEY from the environment
+_llm = ChatGoogleGenerativeAI(model=REACT_MODEL, temperature=0)
 
 
 def _current_frame(state: FrameState):
@@ -181,5 +182,29 @@ async def validation_agent(state: FrameState) -> Dict:
         "enhancement_history": [record],
         "reasoning_trace": [
             f"Validation: improved={did_improve}, retry={next_retry}/{state['max_retries']}"
+        ],
+    }
+
+
+# ---------------------------------------------------------------------
+# 7. Anomaly Detection Agent — runs once, on the final (best-quality) frame
+# ---------------------------------------------------------------------
+async def anomaly_detection_agent(state: FrameState) -> Dict:
+    """Checks for crime/accident/other concerning activity. Runs on the
+    frame AFTER the enhancement loop finishes, since a clearer image
+    gives the VLM a better chance at an accurate read."""
+    async with httpx.AsyncClient() as client:
+        anomaly = await call_node_b_anomaly(client, _current_frame(state))
+
+    if anomaly.review_recommended:
+        logger.warning(f"[anomaly] frame flagged — risk={anomaly.overall_risk}: {anomaly.summary}")
+    else:
+        logger.info(f"[anomaly] frame clear — risk={anomaly.overall_risk}")
+
+    return {
+        "anomaly_result": anomaly,
+        "reasoning_trace": [
+            f"Anomaly check: risk={anomaly.overall_risk}, "
+            f"review_recommended={anomaly.review_recommended} — {anomaly.summary}"
         ],
     }

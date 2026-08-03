@@ -220,3 +220,59 @@ Do NOT describe the image contents.
 
 Limit the response to three sentences.
 """
+
+# --- Append to prompts.py (existing PROMPT for quality defects is untouched) ---
+
+ANOMALY_PROMPT = """You are a surveillance-video analyst. Examine this frame and
+check it for each of the following categories of concerning activity. For
+each category, answer in exactly this format:
+
+Violence:
+Present: Yes/No
+Confidence: High/Medium/Low
+Severity: High/Medium/Low
+Evidence: <one short sentence describing what you see, or "None">
+
+Weapon:
+Present: Yes/No
+Confidence: High/Medium/Low
+Severity: High/Medium/Low
+Evidence: <...>
+
+Fire:
+Present: Yes/No
+Confidence: High/Medium/Low
+Severity: High/Medium/Low
+Evidence: <...>
+
+Accident:
+Present: Yes/No
+Confidence: High/Medium/Low
+Severity: High/Medium/Low
+Evidence: <...>
+
+Fall:
+Present: Yes/No
+Confidence: High/Medium/Low
+Severity: High/Medium/Low
+Evidence: <...>
+
+Intrusion:
+Present: Yes/No
+Confidence: High/Medium/Low
+Severity: High/Medium/Low
+Evidence: <...>
+
+Theft:
+Present: Yes/No
+Confidence: High/Medium/Low
+Severity: High/Medium/Low
+Evidence: <...>
+
+After all categories, add:
+Overall Risk: None/Low/Medium/High
+Summary: <one sentence overall description of what is happening in this frame>
+
+Only mark Present: Yes if you have clear visual evidence in THIS frame. Do not
+guess or assume based on typical surveillance scenarios — describe only what
+is actually visible."""

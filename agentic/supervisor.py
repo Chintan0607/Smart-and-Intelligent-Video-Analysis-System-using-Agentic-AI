@@ -80,6 +80,7 @@ def _to_report_entry(frame: ExtractedFrame, final_state: Dict) -> FrameReportEnt
     entry.retries = final_state["retry_count"]
     entry.history = final_state.get("enhancement_history", [])
     entry.vlm_before = final_state["vlm_result"]
+    entry.anomaly = final_state.get("anomaly_result")
     return entry
 
 

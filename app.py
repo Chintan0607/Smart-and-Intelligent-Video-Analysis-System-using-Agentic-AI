@@ -1,40 +1,18 @@
-import time  # 1. Import time module
+import time
+
+import requests
 import streamlit as st
-from config import EXTRACTED_FRAME_FOLDER, FRAME_INTERVAL, UPLOAD_FOLDER
-from services.qwen_vlm_service import QwenService
+
+from config import NODE_A_PUBLIC_URL, UPLOAD_FOLDER
 from utils import create_folders
-from video_processor import (
-    clear_previous_frames,
-    extract_frames,
-    get_video_metadata,
-    save_uploaded_video,
-)
-from services.summary_service import summarized_response
-from config import QWEN_BATCH_SIZE
+from video_processor import save_uploaded_video
 
 create_folders()
 
-
-@st.cache_resource
-def load_vlm_service():
-    return QwenService()
-
-
-vlm = load_vlm_service()
-
 st.set_page_config(page_title="AI Surveillance Video Analyzer", layout="wide")
 
-st.sidebar.header("Processing Options")
-frame_interval = st.sidebar.slider(
-    "Extract every nth frame",
-    min_value=1,
-    max_value=100,
-    value=FRAME_INTERVAL,
-    step=1,
-)
-
 st.title("AI Surveillance Video Analyzer")
-st.write("Upload a surveillance video to begin quality analysis.")
+st.write("Upload a surveillance video to generate a quality-enhancement report.")
 
 uploaded_video = st.file_uploader(
     "Choose a video file", type=["mp4", "avi", "mov", "mkv"]
@@ -42,93 +20,41 @@ uploaded_video = st.file_uploader(
 
 if uploaded_video is not None:
     saved_path = save_uploaded_video(uploaded_video, UPLOAD_FOLDER)
-    metadata = get_video_metadata(saved_path)
-
     st.success("Video uploaded successfully!")
 
-    st.subheader("Video Information")
-    col1, col2 = st.columns(2)
-
-    with col1:
-        st.metric("FPS", f"{metadata['fps']:.2f}")
-        st.metric("Frames", metadata["frame_count"])
-        st.metric("Duration (s)", f"{metadata['duration']:.2f} sec")
-    with col2:
-        st.metric("Width", metadata["width"])
-        st.metric("Height", metadata["height"])
-
-    clear_previous_frames(EXTRACTED_FRAME_FOLDER)
-    frames = extract_frames(saved_path, EXTRACTED_FRAME_FOLDER, frame_interval)
-    st.info(f"Extracted {len(frames)} frames for temporal analysis.")
-
-    if st.button("Run Quality Analysis Pipeline", type="primary"):
-        progress_bar = st.progress(0)
-        status_text = st.empty()
-
-        raw_responses = []
-        frame_summaries = []
-        total_frames = len(frames)
-
-        # 2. Start execution timer
-        start_time = time.time()
-        batch_size = QWEN_BATCH_SIZE
-
-        for start in range(0,len(frames),batch_size):
-            batch = frames[start:start+batch_size]
-            analyses = vlm.analyze_batch(
-                [f["pil_image"] for f in batch]
-            )
-        for frame,analysis in zip(batch,analyses):
-            analysis["frame_number"] =  frame["frame_number"]
-            raw_responses.append(analysis)
-            if analysis["summary"]:
-                frame_summaries.append(
-                    f"Frame {frame['frame_number']}: {analysis['summary']}"
+    if st.button("Generate Report", type="primary"):
+        with st.spinner("Running agentic quality-enhancement pipeline..."):
+            with open(saved_path, "rb") as f:
+                upload_resp = requests.post(
+                    f"{NODE_A_PUBLIC_URL}/agentic/upload",
+                    files={"file": (uploaded_video.name, f, "video/mp4")},
                 )
-            progress = min((start + len(batch)) / total_frames, 1.0)
-            progress_bar.progress(progress)
+            upload_resp.raise_for_status()
+            job_id = upload_resp.json()["job_id"]
 
-        # 3. Calculate total elapsed processing time
-        elapsed_time = time.time() - start_time
-        status_text.text(f"Analysis complete in {elapsed_time:.2f} seconds!")
+            while True:
+                status_resp = requests.get(f"{NODE_A_PUBLIC_URL}/status/{job_id}")
+                status_resp.raise_for_status()
+                job = status_resp.json()
 
-        aggregated_summary_text = " ".join(frame_summaries)
+                if job["status"] == "done":
+                    break
+                if job["status"] == "error":
+                    st.error(f"Pipeline failed: {job.get('error_message', 'unknown error')}")
+                    st.stop()
 
-        # 4. Include processing time in payload for the downstream agent
-        agent_payload = {
-            "video_name": uploaded_video.name,
-            "total_sampled_frames": total_frames,
-            "processing_time_seconds": round(elapsed_time, 2),
-            "aggregated_summary": aggregated_summary_text,
-            "raw_frame_evaluations": raw_responses,
-        }
+                time.sleep(2)
 
-        st.session_state["agent_payload"] = agent_payload
+        pdf_resp = requests.get(f"{NODE_A_PUBLIC_URL}/report/{job_id}/pdf")
+        pdf_resp.raise_for_status()
 
-    # Display results and timing metrics
-    if "agent_payload" in st.session_state:
-        payload = st.session_state["agent_payload"]
+        st.session_state["report_pdf_bytes"] = pdf_resp.content
+        st.session_state["report_pdf_name"] = f"{job_id}_report.pdf"
 
-        # Display performance metric alongside the summary
-        st.subheader("Aggregated Video Quality Summary")
-        m_col1, m_col2 = st.columns([1, 3])
-        with m_col1:
-            st.metric(
-                "Pipeline Execution Time",
-                f"{payload['processing_time_seconds']} s",
-            )
-        with m_col2:
-            summarized_response = summarized_response(aggregated_summary_text)
-
-        with st.expander("View Full Raw Payload (Agent Data)"):
-            st.json(payload)
-
-    st.subheader("Sample Extracted Frames Preview")
-    preview_cols = st.columns(min(5, len(frames)))
-    for idx, frame in enumerate(frames[:5]):
-        with preview_cols[idx]:
-            st.image(
-                frame["rgb_image"],
-                caption=f"Frame {frame['frame_number']}",
-                use_container_width=True,
-            )
+    if "report_pdf_bytes" in st.session_state:
+        st.download_button(
+            label="Download Report (PDF)",
+            data=st.session_state["report_pdf_bytes"],
+            file_name=st.session_state["report_pdf_name"],
+            mime="application/pdf",
+        )

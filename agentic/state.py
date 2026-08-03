@@ -8,7 +8,7 @@ actual Pydantic models, not a made-up dict shape.
 from typing import TypedDict, List, Dict, Optional, Literal, Annotated
 import operator
 
-from schemas import ExtractedFrame, VLMResult
+from schemas import ExtractedFrame, VLMResult, AnomalyResult
 
 
 class EnhancementRecord(TypedDict):
@@ -29,6 +29,7 @@ class FrameState(TypedDict):
 
     vlm_result: Optional[VLMResult]         # before-enhancement VLM report
     post_vlm_result: Optional[VLMResult]    # after-enhancement VLM report (this iteration)
+    anomaly_result: Optional[AnomalyResult] # checked once, on the final (best-quality) frame
 
     selected_tool: Optional[
         Literal["real_esrgan", "opencv_denoise", "clahe", "sharpen", "none"]

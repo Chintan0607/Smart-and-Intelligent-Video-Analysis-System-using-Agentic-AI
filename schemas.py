@@ -88,3 +88,31 @@ class JobProgress(BaseModel):
     total_frames_estimate: Optional[int] = None
     error_message: Optional[str] = None
     report: Optional[VideoReport] = None
+    
+# --- Append to schemas.py (new models, nothing existing is changed) ---
+
+class AnomalyDetail(BaseModel):
+    present: bool
+    confidence: str
+    severity: str
+    evidence: str
+
+
+class AnomalyResult(BaseModel):
+    frame_number: int
+    anomalies: dict[str, AnomalyDetail] = Field(default_factory=dict)
+    overall_risk: str          # e.g. "None" / "Low" / "Medium" / "High"
+    summary: str
+    review_recommended: bool = False
+
+
+# --- Extend FrameReportEntry (in addition to the retries/history/vlm_before
+#     fields already added for the PDF report) ---
+class FrameReportEntry(BaseModel):
+    frame: ExtractedFrame
+    vlm: VLMResult
+    enhancement: Optional[EnhancementResult] = None
+    retries: int = 0
+    history: list[dict] = Field(default_factory=list)
+    vlm_before: Optional[VLMResult] = None
+    anomaly: Optional[AnomalyResult] = None    # NEW

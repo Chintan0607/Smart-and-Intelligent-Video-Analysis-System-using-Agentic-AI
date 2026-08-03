@@ -82,6 +82,15 @@ def _frame_section(entry: FrameReportEntry, story):
     story.append(Paragraph(f"<b>Enhancement log ({retries} iteration(s)):</b> {_tool_log(history)}",
                            styles["Normal"]))
 
+    anomaly = getattr(entry, "anomaly", None)
+    if anomaly:
+        present = [k for k, v in anomaly.anomalies.items() if v.present]
+        flag = "⚠ FLAGGED" if anomaly.review_recommended else "Clear"
+        story.append(Paragraph(
+            f"<b>Anomaly check ({flag}):</b> Risk={anomaly.overall_risk}, "
+            f"Types={', '.join(present) or 'none'} — {anomaly.summary}",
+            styles["Normal"]))
+
     story.append(HRFlowable(width="100%", color=colors.lightgrey, spaceBefore=8, spaceAfter=8))
 
 
@@ -99,10 +108,13 @@ def generate_pdf_report(report: VideoReport, output_path: str) -> str:
     story.append(Spacer(1, 10))
 
     accepted = sum(1 for e in report.entries if not (e.vlm and e.vlm.regeneration_recommended))
+    flagged = [e for e in report.entries if getattr(e, "anomaly", None) and e.anomaly.review_recommended]
+
     summary_data = [
         ["Total frames in video", str(report.total_frames_in_video)],
         ["Keyframes analyzed", str(report.total_keyframes_extracted)],
         ["Frames in acceptable state", f"{accepted} / {len(report.entries)}"],
+        ["Frames flagged for review", str(len(flagged))],
         ["Total processing time", f"{report.processing_time_seconds:.1f} sec"],
     ]
     t = Table(summary_data, colWidths=[2.4 * inch, 4.1 * inch])
@@ -112,6 +124,19 @@ def generate_pdf_report(report: VideoReport, output_path: str) -> str:
         ("FONTSIZE", (0, 0), (-1, -1), 9),
     ]))
     story.append(t)
+    story.append(Spacer(1, 10))
+
+    if flagged:
+        story.append(Paragraph("⚠ Flagged Incidents (Review Recommended)", styles["Heading2"]))
+        for e in flagged:
+            present = [k for k, v in e.anomaly.anomalies.items() if v.present]
+            story.append(Paragraph(
+                f"<b>Frame #{e.frame.frame_number}</b> (t={e.frame.metadata.timestamp_sec:.2f}s) — "
+                f"Risk: {e.anomaly.overall_risk} — Types: {', '.join(present) or 'n/a'} — "
+                f"{e.anomaly.summary}",
+                styles["Normal"]))
+        story.append(Spacer(1, 8))
+
     story.append(PageBreak())
 
     story.append(Paragraph("Per-Keyframe Detail", styles["Heading1"]))

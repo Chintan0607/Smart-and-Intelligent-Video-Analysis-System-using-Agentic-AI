@@ -12,14 +12,15 @@ from .agents import (
     enhancement_selection_agent,
     enhancement_execution_agent,
     validation_agent,
+    anomaly_detection_agent,
 )
 
 
 def _route_after_validation(state: FrameState) -> str:
     if state["accepted"]:
-        return "end"
+        return "finalize"
     if state["retry_count"] >= state.get("max_retries", 3):
-        return "end"   # retries exhausted — force stop, keep best-effort result
+        return "finalize"   # retries exhausted — force stop, keep best-effort result
     return "retry"
 
 
@@ -30,6 +31,7 @@ def build_frame_graph():
     graph.add_node("enhancement_selection", enhancement_selection_agent)
     graph.add_node("enhancement_execution", enhancement_execution_agent)
     graph.add_node("validation", validation_agent)
+    graph.add_node("anomaly_detection", anomaly_detection_agent)
 
     graph.set_entry_point("quality_assessment")
     graph.add_edge("quality_assessment", "enhancement_selection")
@@ -39,8 +41,9 @@ def build_frame_graph():
     graph.add_conditional_edges(
         "validation",
         _route_after_validation,
-        {"retry": "enhancement_selection", "end": END},
+        {"retry": "enhancement_selection", "finalize": "anomaly_detection"},
     )
+    graph.add_edge("anomaly_detection", END)
 
     return graph.compile()
 
