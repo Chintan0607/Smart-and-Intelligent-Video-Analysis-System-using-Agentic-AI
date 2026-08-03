@@ -6,7 +6,6 @@ from fastapi import FastAPI, File, Form, UploadFile
 from PIL import Image
 
 from services.qwen_vlm_service import QwenService
-from schemas import DefectDetail, VLMResult
 from schemas import DefectDetail, VLMResult, AnomalyDetail, AnomalyResult
 
 app = FastAPI(title="Node B - VLM Worker")

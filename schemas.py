@@ -55,6 +55,21 @@ class EnhancementResult(BaseModel):
     skip_reason: Optional[str] = None
 
 
+class AnomalyDetail(BaseModel):
+    present: bool
+    confidence: str
+    severity: str
+    evidence: str
+
+
+class AnomalyResult(BaseModel):
+    frame_number: int
+    anomalies: dict[str, AnomalyDetail] = Field(default_factory=dict)
+    overall_risk: str          # "None" / "Low" / "Medium" / "High"
+    summary: str
+    review_recommended: bool = False
+
+
 class FrameReportEntry(BaseModel):
     frame: ExtractedFrame
     vlm: VLMResult
@@ -62,6 +77,7 @@ class FrameReportEntry(BaseModel):
     retries: int = 0
     history: list[dict] = Field(default_factory=list)
     vlm_before: Optional[VLMResult] = None
+    anomaly: Optional[AnomalyResult] = None
 
 
 class VideoReport(BaseModel):
@@ -71,6 +87,7 @@ class VideoReport(BaseModel):
     processing_time_seconds: float
     entries: list[FrameReportEntry]
     report_pdf_path: Optional[str] = None
+
 
 class JobStatus(str, Enum):
     PENDING = "pending"
@@ -88,31 +105,3 @@ class JobProgress(BaseModel):
     total_frames_estimate: Optional[int] = None
     error_message: Optional[str] = None
     report: Optional[VideoReport] = None
-    
-# --- Append to schemas.py (new models, nothing existing is changed) ---
-
-class AnomalyDetail(BaseModel):
-    present: bool
-    confidence: str
-    severity: str
-    evidence: str
-
-
-class AnomalyResult(BaseModel):
-    frame_number: int
-    anomalies: dict[str, AnomalyDetail] = Field(default_factory=dict)
-    overall_risk: str          # e.g. "None" / "Low" / "Medium" / "High"
-    summary: str
-    review_recommended: bool = False
-
-
-# --- Extend FrameReportEntry (in addition to the retries/history/vlm_before
-#     fields already added for the PDF report) ---
-class FrameReportEntry(BaseModel):
-    frame: ExtractedFrame
-    vlm: VLMResult
-    enhancement: Optional[EnhancementResult] = None
-    retries: int = 0
-    history: list[dict] = Field(default_factory=list)
-    vlm_before: Optional[VLMResult] = None
-    anomaly: Optional[AnomalyResult] = None    # NEW

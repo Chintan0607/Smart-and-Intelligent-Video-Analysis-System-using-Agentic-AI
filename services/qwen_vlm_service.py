@@ -7,7 +7,7 @@ from transformers import (
 )
 
 from config import MAX_NEW_TOKENS, MODEL_CACHE_DIR, VLM_MODEL_QWEN
-from prompts import PROMPT
+from prompts import PROMPT, ANOMALY_PROMPT
 
 bnb_config = BitsAndBytesConfig(
     load_in_4bit=True,
@@ -189,13 +189,6 @@ class QwenService:
         )
 
         return result
-    
-    # --- Add these two imports at the top of qwen_vlm_service.py ---
-# from prompts import PROMPT, ANOMALY_PROMPT   (replaces the existing "from prompts import PROMPT" line)
-
-# --- Add these two methods INSIDE the existing QwenService class,
-#     anywhere after analyze_batch(). Reuses your existing _query_vlm()
-#     and _extract_field() — nothing about model loading changes. ---
 
     def analyze_anomaly_frame(self, frame):
         return self.analyze_anomaly_batch([frame])[0]
