@@ -1,4 +1,12 @@
-# schemas.py
+"""
+schemas.py
+
+Superset of the prior shared schema file. Adds the agentic
+validation-loop models (ToolType, IterationRecord, AgentFrameResult,
+AgentRunReport) on top of the existing extraction/VLM/enhancement/job
+models — nothing pre-existing was removed, so this is a drop-in
+replacement across all three nodes.
+"""
 from __future__ import annotations
 
 from enum import Enum
@@ -7,6 +15,9 @@ from typing import Optional
 from pydantic import BaseModel, ConfigDict, Field
 
 
+# --------------------------------------------------------------------------
+# Extraction
+# --------------------------------------------------------------------------
 class ExtractionMethod(str, Enum):
     SHOT_BOUNDARY = "shot_boundary"
     SEMANTIC_NOVELTY = "semantic_novelty"
@@ -30,6 +41,9 @@ class ExtractedFrame(BaseModel):
     metadata: FrameMetadata
 
 
+# --------------------------------------------------------------------------
+# VLM
+# --------------------------------------------------------------------------
 class DefectDetail(BaseModel):
     present: bool
     confidence: str
@@ -46,6 +60,9 @@ class VLMResult(BaseModel):
     regeneration_recommended: bool = False
 
 
+# --------------------------------------------------------------------------
+# Enhancement (single-shot, non-agentic path — kept for backward compat)
+# --------------------------------------------------------------------------
 class EnhancementResult(BaseModel):
     frame_number: int
     enhanced_filepath: str
@@ -69,6 +86,9 @@ class VideoReport(BaseModel):
     entries: list[FrameReportEntry]
 
 
+# --------------------------------------------------------------------------
+# Job tracking (shared by both the single-shot and agentic pipelines)
+# --------------------------------------------------------------------------
 class JobStatus(str, Enum):
     PENDING = "pending"
     EXTRACTING = "extracting"
@@ -85,3 +105,65 @@ class JobProgress(BaseModel):
     total_frames_estimate: Optional[int] = None
     error_message: Optional[str] = None
     report: Optional[VideoReport] = None
+    pdf_path: Optional[str] = None
+
+
+# --------------------------------------------------------------------------
+# NEW: Agentic validation loop
+# --------------------------------------------------------------------------
+class ToolType(str, Enum):
+    """What the agent decided to apply for a given iteration."""
+
+    NONE = "none"                    # this record is a pure VLM evaluation, no tool applied
+    GAN_ESRGAN = "gan_realesrgan"     # Node C — resolution / pixelation
+    OPENCV_UNSHARP = "opencv_unsharp_mask"   # motion blur
+    OPENCV_LAPLACIAN = "opencv_laplacian"    # motion blur (alternate/stronger)
+    OPENCV_CLAHE = "opencv_clahe"     # low light / low contrast
+
+
+class IterationRecord(BaseModel):
+    """
+    One pass through the loop: Step 1 (VLM eval) plus, if it wasn't the
+    terminal pass, the Step 3/4 tool decision and application.
+    """
+
+    model_config = ConfigDict(frozen=True)
+
+    iteration_number: int = Field(ge=1)
+    frame_path_evaluated: str
+    vlm_summary: str
+    defects_detected: list[str] = Field(default_factory=list)
+    regeneration_recommended: bool
+    tool_used: ToolType = ToolType.NONE
+    frame_path_after_tool: Optional[str] = None
+
+
+class AgentFrameResult(BaseModel):
+    """Everything the agent did for one keyframe."""
+
+    frame_number: int
+    original_filepath: str
+    final_filepath: str
+    iterations: list[IterationRecord]
+    converged: bool  # True if it exited because quality was accepted, False if it hit max_iterations
+    total_tool_applications: int
+
+    @property
+    def before_summary(self) -> str:
+        return self.iterations[0].vlm_summary if self.iterations else ""
+
+    @property
+    def after_summary(self) -> str:
+        return self.iterations[-1].vlm_summary if self.iterations else ""
+
+    @property
+    def tools_used(self) -> list[ToolType]:
+        return [rec.tool_used for rec in self.iterations if rec.tool_used != ToolType.NONE]
+
+
+class AgentRunReport(BaseModel):
+    video_name: str
+    total_frames_processed: int
+    total_processing_time_seconds: float
+    max_iterations: int
+    frame_results: list[AgentFrameResult]

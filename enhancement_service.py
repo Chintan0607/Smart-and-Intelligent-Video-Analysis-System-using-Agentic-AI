@@ -1,13 +1,16 @@
 from realesrgan import RealESRGANer
 import cv2
+import os
 import torch
 from config import (
     REALESRGAN_MODEL_PATH,
     DEVICE,
     REALESRGAN_OUTSCALE,
-    REALESRGAN_SCALE
+    REALESRGAN_SCALE,
+    ENHANCED_FRAME_FOLDER,
 )
 from basicsr.archs.rrdbnet_arch import RRDBNet
+
 
 class EnhancementService:
     def __init__(self):
@@ -31,15 +34,14 @@ class EnhancementService:
             half=torch.cuda.is_available()
         )
 
+        os.makedirs(ENHANCED_FRAME_FOLDER, exist_ok=True)
         print("Real-ESRGAN Loaded Successfully!!")
-    def enhance_frame(self,path,filename):
-        img = cv2.imread(path)
-        enhanced_frame,_ = self.upsampler.enhance(
-            img,outscale=REALESRGAN_OUTSCALE
-        )
-        cv2.imwrite(f"/home/varad/ML_Workspace/proj_test/enhanced_frames/{filename}_enhanced.jpg",enhanced_frame)
-        print("Enhanced Image saved to enhanced_frames folder...")
 
-if __name__=="__main__":
-    gan = EnhancementService()
-    gan.enhance_frame("/home/varad/ML_Workspace/proj_test/extracted_frames/frame_00090.jpg","frame_00090")
+    def enhance_frame(self, path, filename):
+        img = cv2.imread(path)
+        enhanced_frame, _ = self.upsampler.enhance(
+            img, outscale=REALESRGAN_OUTSCALE
+        )
+        output_path = os.path.join(ENHANCED_FRAME_FOLDER, f"{filename}_enhanced.jpg")
+        cv2.imwrite(output_path, enhanced_frame)
+        print(f"Enhanced Image saved to {output_path}")
