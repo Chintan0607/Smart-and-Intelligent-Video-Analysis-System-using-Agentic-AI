@@ -5,7 +5,7 @@ generator weights used by the Node C enhancement service.
 
 **Author:** Pratik Sonkusare
 **Project:** Smart and Intelligent Video Analysis System using Agentic AI —
-Group 5, PG-DAI, C-DAC ACTS Pune
+Group 5, PGCP-AI, C-DAC ACTS Pune
 
 ---
 
