@@ -28,21 +28,34 @@ degraded/clean frame pairs from our own dataset.
 
 ## Training
 
-Two stages, on PARAM Rudra (NVIDIA A100, MIG partition).
+Stage 1 completed on PARAM Rudra (NVIDIA A100, MIG partition). Stage 2 was
+configured but not run to completion.
 
 **Stage 1 — PSNR-oriented** (`options/finetune_realesrgan_sr4x.yml`)
 L1 loss only, 20,000 iterations, initialised from official
-`RealESRGAN_x4plus.pth` (`params_ema`). Produces a stable generator before
-adversarial training.
+`RealESRGAN_x4plus.pth` (`params_ema`). Fully supervised on real paired data —
+generator only, no discriminator. **This is the run that produced the released
+weights.**
 
-**Stage 2 — adversarial** (`options/finetune_realesrgan_gan.yml`)
-`SRGANModel` with a `UNetDiscriminatorSN`, initialised from the stage-1
-generator. 60,000 iterations. Loss = L1 + VGG19 perceptual + vanilla GAN at
-weight 0.1, so pixel and perceptual terms still dominate and the adversarial
-term only pushes texture realism.
+**Stage 2 — adversarial** (`options/finetune_realesrgan_gan.yml`) — *not completed*
+Configured to run `SRGANModel` with a `UNetDiscriminatorSN` initialised from the
+stage-1 generator: 60,000 iterations, loss = L1 + VGG19 perceptual + vanilla GAN
+at weight 0.1, so pixel and perceptual terms dominate and the adversarial term
+only pushes texture realism. Training was stopped ahead of the project evaluation
+deadline. The config is kept here as the intended next step.
 
 Shared settings: RRDBNet generator (23 blocks, 64 feat, 16.7M params),
-Adam @ 1e-4, MultiStepLR (milestones 10k/20k, γ=0.5), EMA 0.999.
+Adam @ 1e-4, MultiStepLR (milestones 10k/20k, γ=0.5), EMA 0.999, batch size 8,
+`gt_size` 224.
+
+### Evaluation status
+
+Stage-1 outputs were compared against stock Real-ESRGAN through the
+[GANN3](https://github.com/Pratiksonkusare/GANN3) comparison harness, but the
+comparison was **visual only** — no PSNR/SSIM was computed, and no clear
+improvement was demonstrated within the project timeline. Quantitative
+evaluation against ground truth is the outstanding next step, ahead of resuming
+adversarial training.
 
 NAFNet configs (`finetune_nafnet_*.yml`) are included as the same-resolution
 restoration alternative that was evaluated alongside the SR approach.
